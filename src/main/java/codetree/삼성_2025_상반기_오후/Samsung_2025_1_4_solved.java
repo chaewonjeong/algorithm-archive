@@ -6,7 +6,7 @@ import java.io.InputStreamReader;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Samsung_2025_e_1_4_solved {
+public class Samsung_2025_1_4_solved {
     static int[][] dirs = new int[][]{{-1, 0}, {0, 1}, {1, 0},  {0, -1}};
 
     static void insertMicrobe(int[][] board, int microbeType, HashMap<Integer, HashSet<String>> microbes, int r1, int c1, int r2, int c2) {

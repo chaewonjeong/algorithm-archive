@@ -6,7 +6,7 @@ import java.io.InputStreamReader;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Samsung_2025_e_1_3 {
+public class Samsung_2025_1_2 {
 
     static void insertMicrobe(int[][] board, int microbe, HashMap<Integer, HashSet<String>> microbes, HashMap<Integer,Integer> microbesSize,int r1, int c1, int r2, int c2) {
         int count = 0;
@@ -59,7 +59,6 @@ public class Samsung_2025_e_1_3 {
                     deleteMicrobe(board, currentMicrobe, microbesStartPoint.get(currentMicrobe)[0], microbesStartPoint.get(currentMicrobe)[1]);
                     // 먹혀버린 미생물은 삭제
                     microbesStartPoint.remove(currentMicrobe);
-                    System.out.println(currentMicrobe + " : deleted");
                     microbes.remove(currentMicrobe);
                     microbesSize.remove(currentMicrobe);
                     continue;
@@ -93,90 +92,77 @@ public class Samsung_2025_e_1_3 {
 
     // 이동
     static int[][] microbeMove(int[][] board, HashMap<Integer, HashSet<String>> microbes, HashMap<Integer, Integer> microbesSize) {
-        int N = board.length;
-        int[][] newBoard = new int[N][N];
-        int[][] dirs = new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        int[][] newBoard = new int[board.length][board.length];
 
-        for (Map.Entry<Integer, Integer> entry : microbesSize.entrySet().stream()
-                .sorted(Comparator.<Map.Entry<Integer, Integer>>comparingInt(Map.Entry::getValue).reversed()
-                        .thenComparing(Map.Entry::getKey))
-                .collect(Collectors.toList())) {
+        ArrayList<Map.Entry<Integer,Integer>> sorted = microbesSize.entrySet().stream()
+                .sorted(
+                        Comparator.<Map.Entry<Integer, Integer>>comparingInt(Map.Entry::getValue).reversed()
+                                .thenComparingInt(Map.Entry::getKey)
+                )
+                .collect(Collectors.toCollection(ArrayList::new));
 
+
+        for (Map.Entry<Integer, Integer> entry : sorted) {
+            // 크기가 큰 순서
             int microbe = entry.getKey();
-            int size = entry.getValue();
+            boolean isValid = false;
 
-            ArrayList<String> sorted = microbes.get(microbe).stream()
-                    .sorted(Comparator.comparingInt((String s) -> Integer.parseInt(s.split(",")[0]))
-                            .thenComparingInt(s -> Integer.parseInt(s.split(",")[1])))
-                    .collect(Collectors.toCollection(ArrayList::new));
+            ArrayList<String> microbeLocationInfo = microbes.get(microbe).stream().sorted(Comparator.comparing((String r) -> Integer.parseInt(r.split(",")[0]))
+                    .thenComparing((String c) -> Integer.parseInt(c.split(",")[1]))).collect(Collectors.toCollection(ArrayList::new));
 
-            String[] start = sorted.get(0).split(",");
-            int startR = Integer.parseInt(start[0]);
-            int startC = Integer.parseInt(start[1]);
+            int[] firstPosition = new int[] {Integer.parseInt(microbeLocationInfo.get(0).split(",")[0]), Integer.parseInt(microbeLocationInfo.get(0).split(",")[1])};
 
-            boolean isMoved = false;
+            for(int i = 0; i < board.length && !isValid; i++) {
+                for(int j = 0; j < board.length; j++) {
+                    if(newBoard[i][j] == 0) {
+                        int[][] tempBoard = cloneBoard(newBoard);
+                        int diffRow = firstPosition[0] - i;
+                        int diffCol = firstPosition[1] - j;
+                        boolean isMoved = true;
 
-            outer:
-            for (int i = 0; i < N; i++) {
-                for (int j = 0; j < N; j++) {
-                    if (newBoard[i][j] != 0) continue;
+                        ArrayList<int[]> changedPositions = microbeLocationInfo.stream().map(s-> {
+                            int r = Integer.parseInt(s.split(",")[0]);
+                            int c = Integer.parseInt(s.split(",")[1]);
+                            return new int[]{r - diffRow, c - diffCol};
+                        }).collect(Collectors.toCollection(ArrayList::new));
 
-                    int[][] visited = new int[N][N];
-                    Queue<int[]> qPrev = new ArrayDeque<>();
-                    Queue<int[]> qNew = new ArrayDeque<>();
+                        for(int[] changedPosition : changedPositions) {
+                            int newRow = changedPosition[0];
+                            int newCol = changedPosition[1];
 
-                    qPrev.offer(new int[]{startR, startC});
-                    qNew.offer(new int[]{i, j});
-                    visited[i][j] = 1;
-
-                    int filled = 1;
-                    int[][] tempBoard = cloneBoard(newBoard);
-                    HashSet<String> movedCoords = new HashSet<>();
-                    movedCoords.add(i + "," + j);
-                    tempBoard[i][j] = microbe;
-
-                    while (!qPrev.isEmpty() && !qNew.isEmpty()) {
-                        int[] prev = qPrev.poll();
-                        int[] now = qNew.poll();
-
-                        for (int[] dir : dirs) {
-                            int nr = now[0] + dir[0];
-                            int nc = now[1] + dir[1];
-                            int pr = prev[0] + dir[0];
-                            int pc = prev[1] + dir[1];
-
-                            if (nr < 0 || nr >= N || nc < 0 || nc >= N || visited[nr][nc] == 1 || tempBoard[nr][nc] != 0)
-                                continue;
-                            if (pr < 0 || pr >= N || pc < 0 || pc >= N || board[pr][pc] != microbe)
-                                continue;
-
-                            visited[nr][nc] = 1;
-                            tempBoard[nr][nc] = microbe;
-                            qPrev.offer(new int[]{pr, pc});
-                            qNew.offer(new int[]{nr, nc});
-                            movedCoords.add(nr + "," + nc);
-                            filled++;
-
-                            if (filled == size) break;
+                            if(newRow >= 0 && newRow < board.length && newCol >= 0 && newCol < board.length){
+                                if(newBoard[newRow][newCol] == 0) {
+                                    tempBoard[newRow][newCol] = microbe;
+                                } else {
+                                    isMoved = false;
+                                    break;
+                                }
+                            }
                         }
-                        if (filled == size) break;
-                    }
+                        if(isMoved) {
+                            newBoard = tempBoard;
+                            // 새 좌표 정보 수정
+                            HashSet<String> newLocation = new HashSet<>();
+                            for(int[] changedPosition : changedPositions) {
+                                int newRow = changedPosition[0];
+                                int newCol = changedPosition[1];
+                                newLocation.add(newRow + "," + newCol);
+                            }
+                            microbes.put(microbe, newLocation);
 
-                    if (filled == size) {
-                        newBoard = tempBoard;
-                        microbes.put(microbe, movedCoords);
-                        isMoved = true;
-                        break outer;
+                            isValid = true;
+                            break;
+                        }
                     }
                 }
             }
-
-            if (!isMoved) {
+            // 어디로도 옮길 수 없으면
+            if(!isValid){
                 microbes.remove(microbe);
                 microbesSize.remove(microbe);
             }
-        }
 
+        }
         return newBoard;
     }
 
@@ -228,7 +214,7 @@ public class Samsung_2025_e_1_3 {
 
         // case 별로  bfs 완탐해도 시간초과는 없을 듯
 
-        int[][] board = new int[N][N];
+        int[][] board = new int[N + 1][N + 1];
         HashMap<Integer, HashSet<String>> microbes = new HashMap<>();
         HashMap<Integer, Integer> microbesSize = new HashMap<>();
 
@@ -250,7 +236,6 @@ public class Samsung_2025_e_1_3 {
 
 
 
-
             // 겹치는 영역은 나중에 투입 된 녀석으로 대체
             // 겹치는 영역 판별은 어떻게??
             // 겹칠라면 우측하단 (ra2, ca2) 의 각 값들이 무조건 (rb1, cb1)보다 크다
@@ -269,6 +254,8 @@ public class Samsung_2025_e_1_3 {
             // 보드를 완탐하는 기준은 r과 y가 작은 순
             // 그런 위치가 2개 이상일때는 어떻게하지..? cur의 r,c를 두고 무조건 끝까지 가봐야하나...
             board = microbeMove(board, microbes, microbesSize);
+
+
 
 
             // 3. 결과 기록

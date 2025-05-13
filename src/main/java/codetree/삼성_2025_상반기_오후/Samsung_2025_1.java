@@ -6,7 +6,7 @@ import java.io.InputStreamReader;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Samsung_2025_e_1_2 {
+public class Samsung_2025_1 {
 
     static void insertMicrobe(int[][] board, int microbe, HashMap<Integer, HashSet<String>> microbes, HashMap<Integer,Integer> microbesSize,int r1, int c1, int r2, int c2) {
         int count = 0;
@@ -91,90 +91,84 @@ public class Samsung_2025_e_1_2 {
     }
 
     // 이동
-    static int[][] microbeMove(int[][] board, HashMap<Integer, HashSet<String>> microbes, HashMap<Integer, Integer> microbesSize) {
+    static void microbeMove(int[][] board, HashMap<Integer, HashSet<String>> microbes, HashMap<Integer, Integer> microbesSize) {
         int[][] newBoard = new int[board.length][board.length];
+        int[][] dirs = new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
 
-        ArrayList<Map.Entry<Integer,Integer>> sorted = microbesSize.entrySet().stream()
-                .sorted(
-                        Comparator.<Map.Entry<Integer, Integer>>comparingInt(Map.Entry::getValue).reversed()
-                                .thenComparingInt(Map.Entry::getKey)
-                )
-                .collect(Collectors.toCollection(ArrayList::new));
-
-
-        for (Map.Entry<Integer, Integer> entry : sorted) {
+        for (Map.Entry<Integer, Integer> entry :
+                microbesSize.entrySet().stream()
+                        .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed()) // 내림차순
+                        .toList()) {
             // 크기가 큰 순서
             int microbe = entry.getKey();
+            // x(r) 좌표가 가장 작은것부터 꺼내야 함
+            // 큐로 꺼낼 수 있게 만들어보자..
+            Queue<String> microbeLocationInfo = microbes.get(microbe).stream().sorted(Comparator.comparing((String s) -> Integer.parseInt(s.split(",")[0]))
+                    .thenComparing((String s) -> Integer.parseInt(s.split(",")[1]))).collect(Collectors.toCollection(ArrayDeque::new));
+
+            String microbeStartString = microbeLocationInfo.peek();
+            int[] microbeStartPoint = new int[] {Integer.parseInt(microbeStartString.split(",")[0]),Integer.parseInt(microbeStartString.split(",")[1])};
+
             boolean isValid = false;
+            // newBoard 완탐
+            for(int i = 0; i < newBoard.length && !isValid; i++) {
+                for(int j = 0; j < newBoard.length && !isValid; j++) {
+                    int count = 0;
 
-            ArrayList<String> microbeLocationInfo = microbes.get(microbe).stream().sorted(Comparator.comparing((String r) -> Integer.parseInt(r.split(",")[0]))
-                    .thenComparing((String c) -> Integer.parseInt(c.split(",")[1]))).collect(Collectors.toCollection(ArrayList::new));
-
-            int[] firstPosition = new int[] {Integer.parseInt(microbeLocationInfo.get(0).split(",")[0]), Integer.parseInt(microbeLocationInfo.get(0).split(",")[1])};
-
-            for(int i = 0; i < board.length && !isValid; i++) {
-                for(int j = 0; j < board.length; j++) {
                     if(newBoard[i][j] == 0) {
-                        int[][] tempBoard = cloneBoard(newBoard);
-                        int diffRow = firstPosition[0] - i;
-                        int diffCol = firstPosition[1] - j;
-                        boolean isMoved = true;
+                        Queue<int[]> newBoardQueue = new ArrayDeque<>();
+                        Queue<int[]> prevBoardQueue = new ArrayDeque<>();
+                        HashSet<String> newMicrobesLocationInfo = new HashSet<>();
 
-                        ArrayList<int[]> changedPositions = microbeLocationInfo.stream().map(s-> {
-                            int r = Integer.parseInt(s.split(",")[0]);
-                            int c = Integer.parseInt(s.split(",")[1]);
-                            return new int[]{r - diffRow, c - diffCol};
-                        }).collect(Collectors.toCollection(ArrayList::new));
+                        int[][] prevBoardVisited = new int[board.length][board.length];
 
-                        for(int[] changedPosition : changedPositions) {
-                            int newRow = changedPosition[0];
-                            int newCol = changedPosition[1];
+                        newBoardQueue.add(new int[]{i,j});
+                        newMicrobesLocationInfo.add(i+","+j);
+                        prevBoardQueue.add(new int[]{microbeStartPoint[0], microbeStartPoint[1]});
+                        prevBoardVisited[microbeStartPoint[0]][microbeStartPoint[1]] = 1;
 
-                            if(newRow >= 0 && newRow < board.length && newCol >= 0 && newCol < board.length){
-                                if(newBoard[newRow][newCol] == 0) {
-                                    tempBoard[newRow][newCol] = microbe;
-                                } else {
-                                    isMoved = false;
-                                    break;
+
+                        while(!newBoardQueue.isEmpty() && !prevBoardQueue.isEmpty()) {
+                            int[] newBoardCurrent = newBoardQueue.poll();
+                            int[] prevBoardCurrent = prevBoardQueue.poll();
+
+
+                            for(int[] dir : dirs) {
+                                int newBoardNextRow = newBoardCurrent[0] + dir[0];
+                                int newBoardNextCol = newBoardCurrent[1] + dir[1];
+
+                                int prevBoardNextRow = prevBoardCurrent[0] + dir[0];
+                                int prevBoardNextCol = prevBoardCurrent[1] + dir[1];
+
+                                if(newBoardNextRow >= 0 && newBoardNextRow < board.length && newBoardNextCol >= 0 && newBoardNextCol < board.length
+                                && prevBoardNextRow >= 0 && prevBoardNextRow < board.length && prevBoardNextCol >= 0 && prevBoardNextCol < board.length
+                                && newBoard[newBoardNextRow][newBoardNextCol] == 0 && board[prevBoardNextRow][prevBoardNextCol] == microbe && prevBoardVisited[prevBoardNextRow][prevBoardNextCol] == 0) {
+                                    prevBoardVisited[prevBoardNextRow][prevBoardNextCol] = 1;
+                                    newBoard[newBoardNextRow][newBoardNextCol] = microbe;
+                                    count++;
+                                    newMicrobesLocationInfo.add(newBoardNextRow + "," + newBoardNextCol);
+                                    prevBoardQueue.add(new int[] {prevBoardNextRow, prevBoardNextCol});
+                                    newBoardQueue.add(new int[] {newBoardNextRow, newBoardNextCol});
                                 }
                             }
                         }
-                        if(isMoved) {
-                            newBoard = tempBoard;
-                            // 새 좌표 정보 수정
-                            HashSet<String> newLocation = new HashSet<>();
-                            for(int[] changedPosition : changedPositions) {
-                                int newRow = changedPosition[0];
-                                int newCol = changedPosition[1];
-                                newLocation.add(newRow + "," + newCol);
-                            }
-                            microbes.put(microbe, newLocation);
-
+                        if(count == microbesSize.get(microbe)){
+                            microbes.put(microbe, newMicrobesLocationInfo);
                             isValid = true;
                             break;
                         }
                     }
                 }
             }
-            // 어디로도 옮길 수 없으면
+
             if(!isValid){
                 microbes.remove(microbe);
                 microbesSize.remove(microbe);
             }
 
         }
-        return newBoard;
-    }
+        board = newBoard;
 
-
-    static int[][] cloneBoard(int[][] board) {
-        int[][] newBoard = new int[board.length][board.length];
-        for(int i = 0; i < board.length; i++) {
-            for(int j = 0; j < board.length; j++) {
-                newBoard[i][j] = board[i][j];
-            }
-        }
-        return newBoard;
     }
 
     static void deleteMicrobe(int[][] board, int microbe, int startR, int startC) {
@@ -253,7 +247,7 @@ public class Samsung_2025_e_1_2 {
             // 새로 이동할 board를 완탐하면서 미생물 무리의 val 값을 탐색하면서 boar에 넣을 수 있는지 확인 만약 끝까지 갔는데도 못했다면 삭제
             // 보드를 완탐하는 기준은 r과 y가 작은 순
             // 그런 위치가 2개 이상일때는 어떻게하지..? cur의 r,c를 두고 무조건 끝까지 가봐야하나...
-            board = microbeMove(board, microbes, microbesSize);
+            //microbeMove(board, microbes, microbesSize);
 
 
 
